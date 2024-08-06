@@ -1,109 +1,164 @@
-import os
-import unittest
-from unittest.mock import patch, mock_open, call
+import unittest, json, os
 from click.testing import CliRunner
 from replace_text.replace_text import replace_text
 
 
 class TestReplaceText(unittest.TestCase):
-    def assert_path_any_call(self, mock_obj, expected_path, mode, encoding):
-        normalized_expected_path = os.path.normpath(expected_path)
-        for mock_call in mock_obj.call_args_list:
-            args, kwargs = mock_call
-            if len(args) >= 1:
-                normalized_actual_path = os.path.normpath(args[0])
-                if (
-                    normalized_actual_path == normalized_expected_path
-                    and args[1] == mode
-                    and kwargs.get("encoding") == encoding
-                ):
-                    return
-        raise AssertionError(
-            f"Expected call not found: open('{normalized_expected_path}', '{mode}', encoding='{encoding}')"
-        )
+    def setUp(self):
+        self.runner = CliRunner()
+        self.test_folder = "test_folder"
+        self.config_file = "config.json"
 
-    @patch("builtins.open", new_callable=mock_open, read_data="key1 content key2")
-    @patch("os.walk")
-    @patch("json.load")
-    def test_replace_text_keys_to_values_single_dict(
-        self, mock_json_load, mock_os_walk, mock_file
-    ):
-        mock_json_load.return_value = {
+        # Create test folder and files
+        os.makedirs(self.test_folder, exist_ok=True)
+        with open(os.path.join(self.test_folder, "test1.txt"), "w") as f:
+            f.write("Hello world")
+        with open(os.path.join(self.test_folder, "test2.txt"), "w") as f:
+            f.write("Python is awesome")
+
+        # Create config file
+        config = {
             "dictionaries": {
-                "example1": {"key1": "value1", "key2": "value2", "key3": "value3"}
+                "test_dict": {"Hello": "Bonjour", "world": "monde", "Python": "Java"}
             },
-            "ignore_extensions": [".png", ".jpg"],
+            "ignore_extensions": [".ignore"],
+            "ignore_directories": ["ignore_dir"],
+            "ignore_file_prefixes": ["ignore_"],
         }
-        mock_os_walk.return_value = [
-            ("/mocked/path", ("subdir",), ("file1.txt", "file2.jpg"))
-        ]
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
 
-        runner = CliRunner()
-        result = runner.invoke(
+    def tearDown(self):
+        # Clean up test files and folders
+        for root, dirs, files in os.walk(self.test_folder, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+        os.rmdir(self.test_folder)
+        os.remove(self.config_file)
+
+    def test_replace_text_keys_to_values(self):
+        result = self.runner.invoke(
             replace_text,
-            ["--direction", "1", "--folder", "/mocked/path", "--dict-name", "example1"],
+            [
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test_dict",
+            ],
         )
-
-        self.assert_path_any_call(mock_file, "/mocked/path/file1.txt", "r", "utf-8")
-        self.assert_path_any_call(mock_file, "/mocked/path/file1.txt", "w", "utf-8")
-        mock_file().write.assert_called_with("value1 content value2")
         self.assertEqual(result.exit_code, 0)
 
-    @patch("builtins.open", new_callable=mock_open, read_data="value1 content value2")
-    @patch("os.walk")
-    @patch("json.load")
-    def test_replace_text_values_to_keys_multiple_dicts(
-        self, mock_json_load, mock_os_walk, mock_file
-    ):
-        mock_json_load.return_value = {
-            "dictionaries": {
-                "example1": {"key1": "value1", "key2": "value2", "key3": "value3"},
-                "example2": {"hello": "world", "foo": "bar", "python": "rocks"},
-            },
-            "ignore_extensions": [".png", ".jpg"],
-        }
-        mock_os_walk.return_value = [
-            ("/mocked/path", ("subdir",), ("file1.txt", "file2.jpg"))
-        ]
+        with open(os.path.join(self.test_folder, "test1.txt"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Bonjour monde")
 
-        runner = CliRunner()
-        result = runner.invoke(
+        with open(os.path.join(self.test_folder, "test2.txt"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Java is awesome")
+
+    def test_replace_text_values_to_keys(self):
+        # First, replace keys with values
+        self.runner.invoke(
             replace_text,
-            ["--direction", "2", "--folder", "/mocked/path", "--dict-name", "example1"],
+            [
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test_dict",
+            ],
         )
 
-        self.assert_path_any_call(mock_file, "/mocked/path/file1.txt", "r", "utf-8")
-        self.assert_path_any_call(mock_file, "/mocked/path/file1.txt", "w", "utf-8")
-        mock_file().write.assert_called_with("key1 content key2")
-        self.assertEqual(result.exit_code, 0)
-
-    @patch("builtins.open", new_callable=mock_open, read_data="hello content foo")
-    @patch("os.walk")
-    @patch("json.load")
-    def test_replace_text_with_dict_name_flag(
-        self, mock_json_load, mock_os_walk, mock_file
-    ):
-        mock_json_load.return_value = {
-            "dictionaries": {
-                "example1": {"key1": "value1", "key2": "value2", "key3": "value3"},
-                "example2": {"hello": "world", "foo": "bar", "python": "rocks"},
-            },
-            "ignore_extensions": [".png", ".jpg"],
-        }
-        mock_os_walk.return_value = [
-            ("/mocked/path", ("subdir",), ("file1.txt", "file2.jpg"))
-        ]
-
-        runner = CliRunner()
-        result = runner.invoke(
+        # Then, test replacing values with keys
+        result = self.runner.invoke(
             replace_text,
-            ["--direction", "1", "--folder", "/mocked/path", "--dict-name", "example2"],
+            [
+                "--direction",
+                "2",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test_dict",
+            ],
         )
-
-        self.assert_path_any_call(mock_file, "/mocked/path/file1.txt", "r", "utf-8")
-        self.assert_path_any_call(mock_file, "/mocked/path/file1.txt", "w", "utf-8")
-        mock_file().write.assert_called_with("world content bar")
         self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "test1.txt"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Hello world")
+
+        with open(os.path.join(self.test_folder, "test2.txt"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Python is awesome")
+
+    def test_ignore_extensions(self):
+        with open(os.path.join(self.test_folder, "test.ignore"), "w") as f:
+            f.write("Hello world")
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test_dict",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "test.ignore"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Hello world")  # Content should remain unchanged
+
+    def test_ignore_directories(self):
+        os.makedirs(os.path.join(self.test_folder, "ignore_dir"), exist_ok=True)
+        with open(os.path.join(self.test_folder, "ignore_dir", "test.txt"), "w") as f:
+            f.write("Hello world")
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test_dict",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "ignore_dir", "test.txt"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Hello world")  # Content should remain unchanged
+
+    def test_ignore_file_prefixes(self):
+        with open(os.path.join(self.test_folder, "ignore_test.txt"), "w") as f:
+            f.write("Hello world")
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test_dict",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "ignore_test.txt"), "r") as f:
+            content = f.read()
+        self.assertEqual(content, "Hello world")  # Content should remain unchanged
 
 
 if __name__ == "__main__":

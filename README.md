@@ -6,7 +6,7 @@ This project replaces text in files based on a dictionary, given user input to s
 
 - Replace text in files based on dictionaries defined in a configuration file.
 - Allows user to specify the direction of replacement (keys-to-values or values-to-keys).
-- Allows user to specify which file extensions to ignore.
+- Allows user to specify which file extensions, file prefixes, or directories to ignore.
 - Automatically uses the only dictionary if only one is defined in the configuration file.
 
 ## Requirements
@@ -59,7 +59,9 @@ This project replaces text in files based on a dictionary, given user input to s
           "python": "rocks"
         }
       },
-      "ignore_extensions": [".png", ".jpg", ".gif"]
+    "ignore_extensions": [".exe", ".dll", ".bin"],
+    "ignore_directories": ["node_modules", "venv", ".git"],
+    "ignore_file_prefixes": [".", "_"]
     }
     ```
 

@@ -11,5 +11,7 @@
             "python": "rocks"
         }
     },
-    "ignore_extensions": [".png", ".jpg", ".gif"]
+    "ignore_extensions": [".exe", ".dll", ".bin"],
+    "ignore_directories": ["node_modules", "venv", ".git"],
+    "ignore_file_prefixes": [".", "_"]
 }

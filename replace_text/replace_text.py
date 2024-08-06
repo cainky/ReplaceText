@@ -28,13 +28,15 @@ def replace_text(direction: int, folder: str, dict_name: str) -> None:
         folder (str): Path to the folder containing text files.
         dict_name (str): Name of the dictionary to use from config.json.
     """
-    # Load dictionaries and ignore extensions from config file
+    # Load dictionaries and configuration from config file
     with open("config.json", "r") as config_file:
         config = json.load(config_file)
 
-    # Retrieve the dictionaries and ignore extensions
+    # Retrieve the dictionaries and configuration options
     dictionaries = config.get("dictionaries", {})
     ignore_extensions = config.get("ignore_extensions", [])
+    ignore_directories = config.get("ignore_directories", [])
+    ignore_file_prefixes = config.get("ignore_file_prefixes", [])
 
     if not dictionaries:
         print("No dictionaries found in config.json")
@@ -59,22 +61,37 @@ def replace_text(direction: int, folder: str, dict_name: str) -> None:
         replacement_dict = {v: k for k, v in replacement_dict.items()}
 
     # Process each file in the folder
-    for root, _, files in os.walk(folder):
+    for root, dirs, files in os.walk(folder):
+        # Remove ignored directories from the dirs list
+        dirs[:] = [d for d in dirs if d not in ignore_directories]
+
         for file in files:
             file_path = os.path.join(root, file)
+
+            # Skip files with ignored extensions
             if any(file.endswith(ext) for ext in ignore_extensions):
                 print(f"Skipped file (ignored extension): {file_path}")
                 continue
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
 
-            for key, value in replacement_dict.items():
-                content = content.replace(key, value)
+            # Skip files with ignored prefixes
+            if any(file.startswith(prefix) for prefix in ignore_file_prefixes):
+                print(f"Skipped file (ignored prefix): {file_path}")
+                continue
 
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            print(f"Processing file: {file}")
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                for key, value in replacement_dict.items():
+                    content = content.replace(key, value)
 
-            print(f"Processed file: {file_path}")
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+
+                print(f"Processed file: {file_path}")
+            except Exception as e:
+                print(f"Error processing file: {file}, continuing..")
+                continue
 
 
 if __name__ == "__main__":
