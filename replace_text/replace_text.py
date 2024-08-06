@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, List
+from typing import Dict
 import click
 
 
