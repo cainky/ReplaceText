@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "replace_text"
+version = "0.1.0"
+description = "Replaces text based on a dictionary, given user input to specify which direction (keys-to-values or values-to-keys)"
+authors = ["Kyle Cain <kylecain.me@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+click = "^8.1.7"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
