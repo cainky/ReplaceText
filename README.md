@@ -1,8 +1,8 @@
-# replacetext
+# textswap
 
 **Bulk text replacement in files using dictionary mappings.**
 
-[![PyPI version](https://badge.fury.io/py/replacetext.svg)](https://badge.fury.io/py/replacetext)
+[![PyPI version](https://badge.fury.io/py/textswap.svg)](https://badge.fury.io/py/textswap)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 Replace text across multiple files using find/replace dictionaries. Supports bidirectional replacement (keys-to-values or values-to-keys).
@@ -10,7 +10,7 @@ Replace text across multiple files using find/replace dictionaries. Supports bid
 ## Installation
 
 ```bash
-pip install replacetext
+pip install textswap
 ```
 
 ## Quick Start
@@ -34,23 +34,23 @@ pip install replacetext
 2. Run:
 
 ```bash
-replacetext -f ./my_folder -d 1
+textswap -f ./my_folder -d 1
 ```
 
 ## Usage
 
 ```bash
 # Interactive mode
-replacetext
+textswap
 
 # With options
-replacetext --folder ./src --direction 1 --config my_config.json
+textswap --folder ./src --direction 1 --config my_config.json
 
 # Dry run (preview changes)
-replacetext -f ./src -d 1 --dry-run
+textswap -f ./src -d 1 --dry-run
 
 # Reverse direction (values-to-keys)
-replacetext -f ./src -d 2
+textswap -f ./src -d 2
 ```
 
 ## Options

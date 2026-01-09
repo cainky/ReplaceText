@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 
 
-@click.command(name="replacetext")
+@click.command(name="textswap")
 @click.option(
     "--config",
     "-c",

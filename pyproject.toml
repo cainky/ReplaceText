@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "replacetext"
+name = "textswap"
 version = "0.1.0"
 description = "Bulk text replacement in files using dictionary mappings"
 readme = "README.md"
@@ -39,7 +39,7 @@ dev = [
 ]
 
 [project.scripts]
-replacetext = "replace_text.replace_text:replace_text"
+textswap = "replace_text.replace_text:replace_text"
 
 [project.urls]
 Homepage = "https://github.com/cainky/ReplaceText"
