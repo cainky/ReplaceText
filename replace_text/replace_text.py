@@ -1,5 +1,7 @@
 """Replace text in files based on dictionary mappings."""
 
+from __future__ import annotations
+
 import json
 import os
 from pathlib import Path
