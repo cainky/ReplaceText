@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReplaceText | Batch Text Replacement with Dictionaries</title>
+    <title>textswap | Batch Text Replacement with Dictionaries</title>
     <meta name="description" content="Replace text in files based on dictionaries. Bidirectional replacement, configurable ignore patterns, Python CLI tool.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -185,11 +185,11 @@
     <section class="hero">
         <div class="container">
             <div class="logo">🔄</div>
-            <h1>ReplaceText</h1>
+            <h1>textswap</h1>
             <p class="tagline">Batch text replacement powered by dictionaries. Replace keys with values or values with keys across entire directories.</p>
             <div class="badges">
-                <span class="badge">Python 3.8+</span>
-                <span class="badge">Poetry</span>
+                <span class="badge">Python 3.9+</span>
+                <span class="badge">pip install</span>
                 <span class="badge badge-highlight">Bidirectional</span>
                 <span class="badge">GPL-3.0</span>
             </div>
@@ -207,8 +207,8 @@
 
     <div class="container">
         <div class="install">
-            <code>git clone https://github.com/cainky/ReplaceText.git && cd ReplaceText && poetry install</code>
-            <button onclick="navigator.clipboard.writeText('git clone https://github.com/cainky/ReplaceText.git && cd ReplaceText && poetry install')">Copy</button>
+            <code>pip install textswap</code>
+            <button onclick="navigator.clipboard.writeText('pip install textswap')">Copy</button>
         </div>
     </div>
 
@@ -270,15 +270,14 @@
             </div>
             <div class="code-block">
                 <div class="code-header">Terminal</div>
-                <pre><code><span class="comment"># Run the replacement tool</span>
-$ poetry run python replace_text/replace_text.py
+                <pre><code><span class="comment"># Interactive mode</span>
+$ textswap
 
-<span class="comment"># Select direction:</span>
-<span class="string">Enter '1' for keys-to-values</span>
-<span class="string">Enter '2' for values-to-keys</span>
+<span class="comment"># With options</span>
+$ textswap -f ./src -d 1 -c config.json
 
-<span class="comment"># Enter folder path and dictionary name</span>
-<span class="comment"># All matching files will be processed!</span></code></pre>
+<span class="comment"># Dry run (preview changes)</span>
+$ textswap -f ./src -d 1 --dry-run</code></pre>
             </div>
         </div>
     </section>
