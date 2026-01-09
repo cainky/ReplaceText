@@ -1,5 +1,9 @@
-import unittest, json, os
+import json
+import os
+import unittest
+
 from click.testing import CliRunner
+
 from replace_text.replace_text import replace_text
 
 
@@ -18,9 +22,7 @@ class TestReplaceText(unittest.TestCase):
 
         # Create config file
         config = {
-            "dictionaries": {
-                "test_dict": {"Hello": "Bonjour", "world": "monde", "Python": "Java"}
-            },
+            "dictionaries": {"test_dict": {"Hello": "Bonjour", "world": "monde", "Python": "Java"}},
             "ignore_extensions": [".ignore"],
             "ignore_directories": ["ignore_dir"],
             "ignore_file_prefixes": ["ignore_"],
@@ -52,11 +54,11 @@ class TestReplaceText(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-        with open(os.path.join(self.test_folder, "test1.txt"), "r") as f:
+        with open(os.path.join(self.test_folder, "test1.txt")) as f:
             content = f.read()
         self.assertEqual(content, "Bonjour monde")
 
-        with open(os.path.join(self.test_folder, "test2.txt"), "r") as f:
+        with open(os.path.join(self.test_folder, "test2.txt")) as f:
             content = f.read()
         self.assertEqual(content, "Java is awesome")
 
@@ -88,11 +90,11 @@ class TestReplaceText(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-        with open(os.path.join(self.test_folder, "test1.txt"), "r") as f:
+        with open(os.path.join(self.test_folder, "test1.txt")) as f:
             content = f.read()
         self.assertEqual(content, "Hello world")
 
-        with open(os.path.join(self.test_folder, "test2.txt"), "r") as f:
+        with open(os.path.join(self.test_folder, "test2.txt")) as f:
             content = f.read()
         self.assertEqual(content, "Python is awesome")
 
@@ -113,7 +115,7 @@ class TestReplaceText(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-        with open(os.path.join(self.test_folder, "test.ignore"), "r") as f:
+        with open(os.path.join(self.test_folder, "test.ignore")) as f:
             content = f.read()
         self.assertEqual(content, "Hello world")  # Content should remain unchanged
 
@@ -135,7 +137,7 @@ class TestReplaceText(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-        with open(os.path.join(self.test_folder, "ignore_dir", "test.txt"), "r") as f:
+        with open(os.path.join(self.test_folder, "ignore_dir", "test.txt")) as f:
             content = f.read()
         self.assertEqual(content, "Hello world")  # Content should remain unchanged
 
@@ -156,7 +158,7 @@ class TestReplaceText(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-        with open(os.path.join(self.test_folder, "ignore_test.txt"), "r") as f:
+        with open(os.path.join(self.test_folder, "ignore_test.txt")) as f:
             content = f.read()
         self.assertEqual(content, "Hello world")  # Content should remain unchanged
 

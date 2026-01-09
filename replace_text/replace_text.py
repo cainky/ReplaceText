@@ -1,98 +1,135 @@
-import os
+"""Replace text in files based on dictionary mappings."""
+
 import json
-from typing import Dict
+import os
+from pathlib import Path
+
 import click
 
 
-@click.command(name="replace_text")
+@click.command(name="replacetext")
 @click.option(
-    "--direction",
-    type=click.IntRange(1, 2),
-    prompt="Direction (1 for keys-to-values or 2 for values-to-keys)",
-    help="Specify the direction for replacement: 1 for keys-to-values, 2 for values-to-keys.",
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    default="config.json",
+    help="Path to config file (default: config.json in current directory)",
 )
 @click.option(
-    "--folder", prompt="Folder path", help="Path to the folder containing text files."
+    "--direction",
+    "-d",
+    type=click.IntRange(1, 2),
+    prompt="Direction (1 for keys-to-values, 2 for values-to-keys)",
+    help="1 for keys-to-values, 2 for values-to-keys",
+)
+@click.option(
+    "--folder",
+    "-f",
+    type=click.Path(exists=True),
+    prompt="Folder path",
+    help="Path to folder containing files to process",
 )
 @click.option(
     "--dict-name",
+    "-n",
     default=None,
-    help="Name of the dictionary to use from config.json.",
+    help="Dictionary name from config (auto-selects if only one)",
 )
-def replace_text(direction: int, folder: str, dict_name: str) -> None:
-    """
-    Replace text in files based on the given dictionary and direction.
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be replaced without making changes",
+)
+def replace_text(
+    config: str, direction: int, folder: str, dict_name: str | None, dry_run: bool
+) -> None:
+    """Replace text in files based on dictionary mappings.
 
-    Args:
-        direction (int): Direction for replacement (1 for keys-to-values, 2 for values-to-keys).
-        folder (str): Path to the folder containing text files.
-        dict_name (str): Name of the dictionary to use from config.json.
+    Define replacement dictionaries in a JSON config file, then run this tool
+    to bulk replace text across all files in a folder.
     """
-    # Load dictionaries and configuration from config file
-    with open("config.json", "r") as config_file:
-        config = json.load(config_file)
+    config_path = Path(config)
+    if not config_path.exists():
+        click.echo(f"Error: Config file not found: {config}", err=True)
+        raise SystemExit(1)
 
-    # Retrieve the dictionaries and configuration options
-    dictionaries = config.get("dictionaries", {})
-    ignore_extensions = config.get("ignore_extensions", [])
-    ignore_directories = config.get("ignore_directories", [])
-    ignore_file_prefixes = config.get("ignore_file_prefixes", [])
+    with open(config_path) as f:
+        cfg = json.load(f)
+
+    dictionaries = cfg.get("dictionaries", {})
+    ignore_extensions = cfg.get("ignore_extensions", [])
+    ignore_directories = cfg.get("ignore_directories", [])
+    ignore_file_prefixes = cfg.get("ignore_file_prefixes", [])
 
     if not dictionaries:
-        print("No dictionaries found in config.json")
-        return
+        click.echo("Error: No dictionaries found in config", err=True)
+        raise SystemExit(1)
 
     if dict_name is None:
         if len(dictionaries) == 1:
             dict_name = next(iter(dictionaries))
-            print(f"Automatically using the only dictionary available: {dict_name}")
+            click.echo(f"Using dictionary: {dict_name}")
         else:
             dict_name = click.prompt(
-                "Dictionary name", type=click.Choice(dictionaries.keys())
+                "Dictionary name", type=click.Choice(list(dictionaries.keys()))
             )
 
     if dict_name not in dictionaries:
-        print(f"Dictionary {dict_name} not found in config.json")
-        return
+        click.echo(f"Error: Dictionary '{dict_name}' not found", err=True)
+        raise SystemExit(1)
 
-    replacement_dict: Dict[str, str] = dictionaries[dict_name]
+    replacement_dict: dict[str, str] = dictionaries[dict_name]
 
     if direction == 2:
         replacement_dict = {v: k for k, v in replacement_dict.items()}
 
-    # Process each file in the folder
+    if dry_run:
+        click.echo("Dry run mode - no files will be modified")
+
+    files_processed = 0
+    replacements_made = 0
+
     for root, dirs, files in os.walk(folder):
-        # Remove ignored directories from the dirs list
         dirs[:] = [d for d in dirs if d not in ignore_directories]
 
         for file in files:
             file_path = os.path.join(root, file)
 
-            # Skip files with ignored extensions
             if any(file.endswith(ext) for ext in ignore_extensions):
-                print(f"Skipped file (ignored extension): {file_path}")
                 continue
 
-            # Skip files with ignored prefixes
             if any(file.startswith(prefix) for prefix in ignore_file_prefixes):
-                print(f"Skipped file (ignored prefix): {file_path}")
                 continue
 
-            print(f"Processing file: {file}")
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
+
+                new_content = content
                 for key, value in replacement_dict.items():
-                    content = content.replace(key, value)
+                    new_content = new_content.replace(key, value)
 
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(content)
+                if new_content != content:
+                    replacements_made += 1
+                    if dry_run:
+                        click.echo(f"Would modify: {file_path}")
+                    else:
+                        with open(file_path, "w", encoding="utf-8") as f:
+                            f.write(new_content)
+                        click.echo(f"Modified: {file_path}")
 
-                print(f"Processed file: {file_path}")
-            except Exception as e:
-                print(f"Error processing file: {file}, continuing..")
+                files_processed += 1
+
+            except (UnicodeDecodeError, PermissionError):
                 continue
+
+    click.echo(f"\nProcessed {files_processed} files, {replacements_made} modified")
+
+
+def main():
+    """Entry point."""
+    replace_text()
 
 
 if __name__ == "__main__":
-    replace_text()
+    main()

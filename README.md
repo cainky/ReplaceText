@@ -1,93 +1,84 @@
-# ReplaceText
+# replacetext
 
-This project replaces text in files based on a dictionary, given user input to specify which direction (keys-to-values or values-to-keys).
+**Bulk text replacement in files using dictionary mappings.**
 
-## Features
+[![PyPI version](https://badge.fury.io/py/replacetext.svg)](https://badge.fury.io/py/replacetext)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-- Replace text in files based on dictionaries defined in a configuration file.
-- Allows user to specify the direction of replacement (keys-to-values or values-to-keys).
-- Allows user to specify which file extensions, file prefixes, or directories to ignore.
-- Automatically uses the only dictionary if only one is defined in the configuration file.
-
-## Requirements
-
-- Python 3.8 or higher
-- Poetry package manager
+Replace text across multiple files using find/replace dictionaries. Supports bidirectional replacement (keys-to-values or values-to-keys).
 
 ## Installation
 
-1. **Install Poetry** (if not already installed):
+```bash
+pip install replacetext
+```
 
-    ```sh
-    curl -sSL https://install.python-poetry.org | python3 -
-    ```
+## Quick Start
 
-2. **Clone the repository and navigate to the project directory**:
+1. Create a config file (`config.json`):
 
-    ```sh
-    git clone https://github.com/cainky/ReplaceText.git
-    cd ReplaceText
-    ```
-
-3. **Install dependencies**:
-
-    ```sh
-    poetry install
-    ```
-
-## Configuration
-
-1. **Rename the example configuration file**:
-
-    ```sh
-    mv example_config.json config.json
-    ```
-
-2. **Edit `config.json` to define your dictionaries**. Here is an example
-
-    ```json
-    {
-      "dictionaries": {
-        "example1": {
-          "key1": "value1",
-          "key2": "value2",
-          "key3": "value3"
-        },
-        "example2": {
-          "hello": "world",
-          "foo": "bar",
-          "python": "rocks"
-        }
-      },
-    "ignore_extensions": [".exe", ".dll", ".bin"],
-    "ignore_directories": ["node_modules", "venv", ".git"],
-    "ignore_file_prefixes": [".", "_"]
+```json
+{
+  "dictionaries": {
+    "example": {
+      "old_text": "new_text",
+      "foo": "bar"
     }
-    ```
+  },
+  "ignore_extensions": [".exe", ".bin"],
+  "ignore_directories": ["node_modules", ".git"],
+  "ignore_file_prefixes": [".", "_"]
+}
+```
+
+2. Run:
+
+```bash
+replacetext -f ./my_folder -d 1
+```
 
 ## Usage
 
-Run the script using Poetry:
+```bash
+# Interactive mode
+replacetext
 
-```sh
-poetry run python replace_text/replace_text.py
+# With options
+replacetext --folder ./src --direction 1 --config my_config.json
+
+# Dry run (preview changes)
+replacetext -f ./src -d 1 --dry-run
+
+# Reverse direction (values-to-keys)
+replacetext -f ./src -d 2
 ```
 
-The script will prompt you for the following inputs:
+## Options
 
-Direction of replacement:
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--folder` | `-f` | Folder to process |
+| `--direction` | `-d` | 1 = keys-to-values, 2 = values-to-keys |
+| `--config` | `-c` | Path to config file (default: config.json) |
+| `--dict-name` | `-n` | Dictionary name (auto-selects if only one) |
+| `--dry-run` | | Preview changes without modifying files |
 
-- Enter '1' for keys-to-values
-- Enter '2' for values-to-keys
+## Config Format
 
-Folder path:
-
-- Enter the path to the folder containing the files to be processed.
-
-Dictionary name:
-
-- Enter the name of the dictionary to use from config.json.
-The script will process all files in the specified folder, replacing text based on the selected dictionary and direction.
+```json
+{
+  "dictionaries": {
+    "my_replacements": {
+      "find_this": "replace_with_this",
+      "old": "new"
+    }
+  },
+  "ignore_extensions": [".exe", ".dll"],
+  "ignore_directories": ["node_modules", "venv"],
+  "ignore_file_prefixes": [".", "_"]
+}
+```
 
 ## License
-ReplaceText is distributed under the [GNU General Public License, Version 3](./LICENSE), allowing for free software distribution and modification while ensuring that all copies and modified versions remain free.
+
+GPL v3

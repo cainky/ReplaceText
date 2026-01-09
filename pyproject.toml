@@ -1,15 +1,60 @@
-[tool.poetry]
-name = "replace_text"
-version = "0.1.0"
-description = "Replaces text based on a dictionary, given user input to specify which direction (keys-to-values or values-to-keys)"
-authors = ["Kyle Cain <kylecain.me@gmail.com>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-click = "^8.3.1"
-
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "replacetext"
+version = "0.1.0"
+description = "Bulk text replacement in files using dictionary mappings"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "Kyle Cain", email = "kyle@kylecain.me" }
+]
+keywords = ["text", "replace", "bulk", "dictionary", "find-replace", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+replacetext = "replace_text.replace_text:replace_text"
+
+[project.urls]
+Homepage = "https://github.com/cainky/ReplaceText"
+Repository = "https://github.com/cainky/ReplaceText"
+Issues = "https://github.com/cainky/ReplaceText/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["replace_text"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["replace_text/tests"]
