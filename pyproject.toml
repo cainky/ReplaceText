@@ -42,9 +42,9 @@ dev = [
 textswap = "replace_text.replace_text:replace_text"
 
 [project.urls]
-Homepage = "https://github.com/cainky/ReplaceText"
-Repository = "https://github.com/cainky/ReplaceText"
-Issues = "https://github.com/cainky/ReplaceText/issues"
+Homepage = "https://github.com/cainky/textswap"
+Repository = "https://github.com/cainky/textswap"
+Issues = "https://github.com/cainky/textswap/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["replace_text"]
