@@ -46,7 +46,7 @@ textswap
 # With options
 textswap --folder ./src --direction 1 --config my_config.json
 
-# Dry run (preview changes)
+# Dry run (preview changes with diff output)
 textswap -f ./src -d 1 --dry-run
 
 # Reverse direction (values-to-keys)
@@ -78,6 +78,112 @@ textswap -f ./src -d 2
   "ignore_file_prefixes": [".", "_"]
 }
 ```
+
+## How It Works
+
+1. **Load config**: Reads your JSON config file containing replacement dictionaries
+2. **Walk directory**: Recursively traverses the target folder
+3. **Filter files**: Skips files matching ignore rules (extensions, prefixes, directories)
+4. **Read & replace**: For each file, reads content and applies all replacements from the dictionary
+5. **Write back**: Saves modified files (or shows diff in dry-run mode)
+
+All files are processed as UTF-8. Non-UTF-8 files are automatically skipped with a warning.
+
+## Dry Run Output
+
+The `--dry-run` flag shows exactly what would change without modifying files:
+
+```bash
+$ textswap -f ./src -d 1 --dry-run
+Dry run mode - no files will be modified
+
+Would modify: ./src/example.txt
+--- a/./src/example.txt
++++ b/./src/example.txt
+@@ -1 +1 @@
+-Hello world
++Goodbye world
+
+Processed 5 files, 1 modified
+```
+
+## Multiple Dictionaries
+
+You can define multiple dictionaries in your config for different replacement scenarios:
+
+```json
+{
+  "dictionaries": {
+    "encode": {
+      "secret": "s3cr3t",
+      "password": "p4ssw0rd"
+    },
+    "localize_fr": {
+      "Hello": "Bonjour",
+      "Goodbye": "Au revoir"
+    }
+  }
+}
+```
+
+Select which dictionary to use with `--dict-name`:
+
+```bash
+textswap -f ./src -d 1 -n encode
+textswap -f ./src -d 1 -n localize_fr
+```
+
+## Troubleshooting
+
+### "Invalid JSON in config file"
+
+Your config file has a syntax error. Common issues:
+- Missing commas between items
+- Trailing commas (not allowed in JSON)
+- Unquoted strings
+
+Use a JSON validator to check your config.
+
+### "Config must contain a 'dictionaries' object"
+
+Your config file is missing the required `dictionaries` key:
+
+```json
+{
+  "dictionaries": {
+    "my_dict": {"find": "replace"}
+  }
+}
+```
+
+### Files being skipped
+
+Files are skipped for these reasons (shown in output):
+- **Not UTF-8 encoded**: Binary files or files with different encoding
+- **Permission denied**: No read/write access to the file
+
+### No files modified
+
+Check that:
+1. Your search terms exactly match the file content (case-sensitive)
+2. Files aren't being filtered by ignore rules
+3. The target folder contains text files
+
+### Replacements happening in wrong order
+
+Replacements are applied in dictionary key order. If you have overlapping patterns (e.g., "hello" and "hello world"), the first match wins. Consider using more specific patterns.
+
+## Use Cases
+
+- **Encoding/decoding**: Obfuscate or de-obfuscate text in files
+- **Localization**: Batch replace text for different languages
+- **Refactoring**: Rename variables, functions, or classes across a codebase
+- **Template substitution**: Replace placeholders with actual values
+- **Migration**: Update deprecated API calls or import paths
+
+## Encoding
+
+All files are read and written as **UTF-8**. Files that cannot be decoded as UTF-8 (binary files, files with other encodings) are automatically skipped and reported in the output.
 
 ## License
 
