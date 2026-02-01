@@ -564,6 +564,150 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Using dictionary: only_one", result.output)
 
+    def test_multiline_content(self):
+        """Test replacement in multiline files."""
+        with open(os.path.join(self.test_folder, "test.txt"), "w") as f:
+            f.write("Hello world\nHello again\nGoodbye Hello")
+
+        config = {"dictionaries": {"test": {"Hello": "Hi"}}}
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--config",
+                self.config_file,
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "test.txt")) as f:
+            content = f.read()
+        self.assertEqual(content, "Hi world\nHi again\nGoodbye Hi")
+
+    def test_special_characters(self):
+        """Test replacement with special characters."""
+        with open(os.path.join(self.test_folder, "test.txt"), "w") as f:
+            f.write("Price: $100 (USD) [test]")
+
+        config = {"dictionaries": {"test": {"$100": "85", "(USD)": "(GBP)", "[test]": "{done}"}}}
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--config",
+                self.config_file,
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "test.txt")) as f:
+            content = f.read()
+        self.assertEqual(content, "Price: 85 (GBP) {done}")
+
+    def test_unicode_content(self):
+        """Test replacement with unicode characters."""
+        with open(os.path.join(self.test_folder, "test.txt"), "w", encoding="utf-8") as f:
+            f.write("Hello 世界")
+
+        config = {"dictionaries": {"test": {"世界": "World", "Hello": "你好"}}}
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--config",
+                self.config_file,
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "test.txt"), encoding="utf-8") as f:
+            content = f.read()
+        self.assertEqual(content, "你好 World")
+
+    def test_multiple_files_modified(self):
+        """Test that multiple files are correctly modified."""
+        for i in range(5):
+            with open(os.path.join(self.test_folder, f"file{i}.txt"), "w") as f:
+                f.write(f"Hello from file {i}")
+
+        config = {"dictionaries": {"test": {"Hello": "Greetings"}}}
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--config",
+                self.config_file,
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("5 modified", result.output)
+
+        for i in range(5):
+            with open(os.path.join(self.test_folder, f"file{i}.txt")) as f:
+                content = f.read()
+            self.assertEqual(content, f"Greetings from file {i}")
+
+    def test_custom_config_path(self):
+        """Test using a custom config file path."""
+        custom_config = os.path.join(self.test_folder, "custom_config.json")
+        with open(os.path.join(self.test_folder, "test.txt"), "w") as f:
+            f.write("Hello")
+
+        config = {"dictionaries": {"test": {"Hello": "Hi"}}}
+        with open(custom_config, "w") as f:
+            json.dump(config, f)
+
+        result = self.runner.invoke(
+            replace_text,
+            [
+                "--config",
+                custom_config,
+                "--direction",
+                "1",
+                "--folder",
+                self.test_folder,
+                "--dict-name",
+                "test",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+        with open(os.path.join(self.test_folder, "test.txt")) as f:
+            content = f.read()
+        self.assertEqual(content, "Hi")
+
 
 if __name__ == "__main__":
     unittest.main()
