@@ -2,11 +2,183 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import click
+
+
+def load_config(config_path: Path) -> dict[str, Any]:
+    """Load and validate the configuration file.
+
+    Args:
+        config_path: Path to the JSON config file.
+
+    Returns:
+        Parsed configuration dictionary.
+
+    Raises:
+        SystemExit: If config file is invalid or missing required fields.
+    """
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except json.JSONDecodeError as e:
+        click.echo(f"Error: Invalid JSON in config file: {e}", err=True)
+        raise SystemExit(1)
+    except OSError as e:
+        click.echo(f"Error: Could not read config file: {e}", err=True)
+        raise SystemExit(1)
+
+    if not isinstance(cfg.get("dictionaries"), dict):
+        click.echo("Error: Config must contain a 'dictionaries' object", err=True)
+        raise SystemExit(1)
+
+    return cfg
+
+
+def get_replacement_dict(
+    dictionaries: dict[str, dict[str, str]],
+    dict_name: str | None,
+    direction: int,
+) -> tuple[str, dict[str, str]]:
+    """Get the replacement dictionary based on name and direction.
+
+    Args:
+        dictionaries: All available dictionaries from config.
+        dict_name: Name of dictionary to use, or None to auto-select/prompt.
+        direction: 1 for keys-to-values, 2 for values-to-keys.
+
+    Returns:
+        Tuple of (dictionary_name, replacement_dict).
+
+    Raises:
+        SystemExit: If no dictionaries found or specified dict doesn't exist.
+    """
+    if not dictionaries:
+        click.echo("Error: No dictionaries found in config", err=True)
+        raise SystemExit(1)
+
+    if dict_name is None:
+        if len(dictionaries) == 1:
+            dict_name = next(iter(dictionaries))
+            click.echo(f"Using dictionary: {dict_name}")
+        else:
+            dict_name = click.prompt(
+                "Dictionary name", type=click.Choice(list(dictionaries.keys()))
+            )
+
+    if dict_name not in dictionaries:
+        click.echo(f"Error: Dictionary '{dict_name}' not found", err=True)
+        raise SystemExit(1)
+
+    replacement_dict: dict[str, str] = dictionaries[dict_name]
+
+    if direction == 2:
+        replacement_dict = {v: k for k, v in replacement_dict.items()}
+
+    return dict_name, replacement_dict
+
+
+def should_skip_file(
+    file_path: Path,
+    ignore_extensions: list[str],
+    ignore_file_prefixes: list[str],
+) -> bool:
+    """Check if a file should be skipped based on ignore rules.
+
+    Args:
+        file_path: Path to the file.
+        ignore_extensions: List of extensions to skip.
+        ignore_file_prefixes: List of filename prefixes to skip.
+
+    Returns:
+        True if file should be skipped.
+    """
+    filename = file_path.name
+
+    if any(filename.endswith(ext) for ext in ignore_extensions):
+        return True
+
+    if any(filename.startswith(prefix) for prefix in ignore_file_prefixes):
+        return True
+
+    return False
+
+
+def generate_diff(file_path: Path, old_content: str, new_content: str) -> str:
+    """Generate a unified diff between old and new content.
+
+    Args:
+        file_path: Path to the file (for diff header).
+        old_content: Original content.
+        new_content: Modified content.
+
+    Returns:
+        Unified diff string.
+    """
+    old_lines = old_content.splitlines(keepends=True)
+    new_lines = new_content.splitlines(keepends=True)
+
+    diff = difflib.unified_diff(
+        old_lines,
+        new_lines,
+        fromfile=f"a/{file_path}",
+        tofile=f"b/{file_path}",
+        lineterm="",
+    )
+    return "".join(diff)
+
+
+def process_file(
+    file_path: Path,
+    replacement_dict: dict[str, str],
+    dry_run: bool,
+) -> tuple[bool, str | None]:
+    """Process a single file and apply replacements.
+
+    Args:
+        file_path: Path to the file to process.
+        replacement_dict: Dictionary of replacements to apply.
+        dry_run: If True, don't modify the file.
+
+    Returns:
+        Tuple of (was_modified, error_message).
+        error_message is None if successful, otherwise contains the error.
+    """
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return False, f"Skipped (not UTF-8 encoded): {file_path}"
+    except PermissionError:
+        return False, f"Skipped (permission denied): {file_path}"
+    except OSError as e:
+        return False, f"Skipped (read error): {file_path} - {e}"
+
+    new_content = content
+    for key, value in replacement_dict.items():
+        new_content = new_content.replace(key, value)
+
+    if new_content != content:
+        if dry_run:
+            click.echo(f"\nWould modify: {file_path}")
+            diff = generate_diff(file_path, content, new_content)
+            if diff:
+                click.echo(click.style(diff, fg="yellow"))
+        else:
+            try:
+                file_path.write_text(new_content, encoding="utf-8")
+                click.echo(f"Modified: {file_path}")
+            except PermissionError:
+                return False, f"Skipped (write permission denied): {file_path}"
+            except OSError as e:
+                return False, f"Skipped (write error): {file_path} - {e}"
+        return True, None
+
+    return False, None
 
 
 @click.command(name="textswap")
@@ -43,7 +215,11 @@ import click
     help="Show what would be replaced without making changes",
 )
 def replace_text(
-    config: str, direction: int, folder: str, dict_name: str | None, dry_run: bool
+    config: str,
+    direction: int,
+    folder: str,
+    dict_name: str | None,
+    dry_run: bool,
 ) -> None:
     """Replace text in files based on dictionary mappings.
 
@@ -51,84 +227,55 @@ def replace_text(
     to bulk replace text across all files in a folder.
     """
     config_path = Path(config)
-    if not config_path.exists():
-        click.echo(f"Error: Config file not found: {config}", err=True)
-        raise SystemExit(1)
+    folder_path = Path(folder)
 
-    with open(config_path) as f:
-        cfg = json.load(f)
+    cfg = load_config(config_path)
 
     dictionaries = cfg.get("dictionaries", {})
     ignore_extensions = cfg.get("ignore_extensions", [])
     ignore_directories = cfg.get("ignore_directories", [])
     ignore_file_prefixes = cfg.get("ignore_file_prefixes", [])
 
-    if not dictionaries:
-        click.echo("Error: No dictionaries found in config", err=True)
-        raise SystemExit(1)
-
-    if dict_name is None:
-        if len(dictionaries) == 1:
-            dict_name = next(iter(dictionaries))
-            click.echo(f"Using dictionary: {dict_name}")
-        else:
-            dict_name = click.prompt(
-                "Dictionary name", type=click.Choice(list(dictionaries.keys()))
-            )
-
-    if dict_name not in dictionaries:
-        click.echo(f"Error: Dictionary '{dict_name}' not found", err=True)
-        raise SystemExit(1)
-
-    replacement_dict: dict[str, str] = dictionaries[dict_name]
-
-    if direction == 2:
-        replacement_dict = {v: k for k, v in replacement_dict.items()}
+    dict_name, replacement_dict = get_replacement_dict(dictionaries, dict_name, direction)
 
     if dry_run:
-        click.echo("Dry run mode - no files will be modified")
+        click.echo("Dry run mode - no files will be modified\n")
 
     files_processed = 0
-    replacements_made = 0
+    files_modified = 0
+    files_skipped = 0
+    skipped_reasons: list[str] = []
 
-    for root, dirs, files in os.walk(folder):
+    for root, dirs, files in os.walk(folder_path):
+        # Filter out ignored directories
         dirs[:] = [d for d in dirs if d not in ignore_directories]
 
-        for file in files:
-            file_path = os.path.join(root, file)
+        for filename in files:
+            file_path = Path(root) / filename
 
-            if any(file.endswith(ext) for ext in ignore_extensions):
+            if should_skip_file(file_path, ignore_extensions, ignore_file_prefixes):
                 continue
 
-            if any(file.startswith(prefix) for prefix in ignore_file_prefixes):
-                continue
+            modified, error = process_file(file_path, replacement_dict, dry_run)
 
-            try:
-                with open(file_path, encoding="utf-8") as f:
-                    content = f.read()
-
-                new_content = content
-                for key, value in replacement_dict.items():
-                    new_content = new_content.replace(key, value)
-
-                if new_content != content:
-                    replacements_made += 1
-                    if dry_run:
-                        click.echo(f"Would modify: {file_path}")
-                    else:
-                        with open(file_path, "w", encoding="utf-8") as f:
-                            f.write(new_content)
-                        click.echo(f"Modified: {file_path}")
-
+            if error:
+                files_skipped += 1
+                skipped_reasons.append(error)
+            else:
                 files_processed += 1
+                if modified:
+                    files_modified += 1
 
-            except (UnicodeDecodeError, PermissionError):
-                continue
+    # Summary
+    click.echo(f"\nProcessed {files_processed} files, {files_modified} modified")
 
-    click.echo(f"\nProcessed {files_processed} files, {replacements_made} modified")
+    if files_skipped > 0:
+        click.echo(click.style(f"\nSkipped {files_skipped} files:", fg="yellow"))
+        for reason in skipped_reasons:
+            click.echo(click.style(f"  {reason}", fg="yellow"))
 
 
-def main():
+def main() -> None:
     """Entry point."""
     replace_text()
 
